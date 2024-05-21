@@ -30,6 +30,8 @@ def calculate_frequency_polygon(data):
     
     return frequency_polygon_path
 
+def Plotting():
+    pass
 
 def calculate_cumulative_curve(data):
     """

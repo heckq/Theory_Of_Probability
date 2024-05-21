@@ -33,16 +33,16 @@ class MainWindow(QMainWindow):
         self.layout.addWidget(self.tab_widget)
 
         # Create two tabs
-        self.tab_frequency_polygon = QWidget()
-        self.tab_cumulative_curve = QWidget()
-        self.tab_widget.addTab(self.tab_frequency_polygon, "Frequency Polygon")
-        self.tab_widget.addTab(self.tab_cumulative_curve, "Cumulative Curve")
+        self.tab_statistics = QWidget()
+        self.tab_graphs = QWidget()
+        self.tab_widget.addTab(self.tab_statistics, "Statistics")
+        self.tab_widget.addTab(self.tab_graphs, "Graphs")
 
         # Layouts for each tab
-        self.layout_frequency_polygon = QVBoxLayout()
-        self.layout_cumulative_curve = QVBoxLayout()
-        self.tab_frequency_polygon.setLayout(self.layout_frequency_polygon)
-        self.tab_cumulative_curve.setLayout(self.layout_cumulative_curve)
+        self.layout_statistics = QVBoxLayout()
+        self.layout_graphs = QVBoxLayout()
+        self.tab_statistics.setLayout(self.layout_statistics)
+        self.tab_graphs.setLayout(self.layout_graphs)
 
         # Tables layout
         tables_container = QWidget()  # Create a QWidget to contain the QGridLayout
@@ -56,7 +56,7 @@ class MainWindow(QMainWindow):
             tables_layout.addWidget(QLabel(f"<b>{title}</b>"), 0, i)
             tables_layout.addWidget(table, 1, i)
 
-        self.layout.addWidget(tables_container)
+        self.layout_statistics.addWidget(tables_container)
 
         self.mode_label = QLabel()
         self.median_label = QLabel()
@@ -64,11 +64,27 @@ class MainWindow(QMainWindow):
         self.variance_label = QLabel()
         self.std_deviation_label = QLabel()
 
-        self.layout.addWidget(self.mode_label)
-        self.layout.addWidget(self.median_label)
-        self.layout.addWidget(self.mean_label)
-        self.layout.addWidget(self.variance_label)
-        self.layout.addWidget(self.std_deviation_label)
+        self.layout_statistics.addWidget(self.mode_label)
+        self.layout_statistics.addWidget(self.median_label)
+        self.layout_statistics.addWidget(self.mean_label)
+        self.layout_statistics.addWidget(self.variance_label)
+        self.layout_statistics.addWidget(self.std_deviation_label)
+
+        # Create sub-tabs for graphs
+        self.graphs_tab_widget = QTabWidget()
+        self.layout_graphs.addWidget(self.graphs_tab_widget)
+
+        # Create tabs for each type of graph
+        self.tab_frequency_polygon = QWidget()
+        self.tab_cumulative_curve = QWidget()
+        self.graphs_tab_widget.addTab(self.tab_frequency_polygon, "Frequency Polygon")
+        self.graphs_tab_widget.addTab(self.tab_cumulative_curve, "Cumulative Curve")
+
+        # Layouts for each type of graph
+        self.layout_frequency_polygon = QVBoxLayout()
+        self.layout_cumulative_curve = QVBoxLayout()
+        self.tab_frequency_polygon.setLayout(self.layout_frequency_polygon)
+        self.tab_cumulative_curve.setLayout(self.layout_cumulative_curve)
 
         # Placeholder labels for frequency polygon and cumulative curve images
         self.label_frequency_polygon = QLabel("Frequency Polygon will be displayed here")
@@ -111,15 +127,26 @@ class MainWindow(QMainWindow):
         self.variance_label.setText(f"Variance: {results['Variance']}")
         self.std_deviation_label.setText(f"Standard Deviation: {results['Standard Deviation']}")
 
-        # Calculate and update frequency polygon
-        frequency_polygon_path = calculate_frequency_polygon(numbers)
-        frequency_pixmap = QPixmap(frequency_polygon_path)
+        frequency_data = calculate_frequency_polygon(numbers)
+        frequency_pixmap = QPixmap(frequency_data)
+        tab_size = self.tab_frequency_polygon.size()  # Get the size of the tab
+        scaling_factor = min(tab_size.width() / frequency_pixmap.width(), tab_size.height() / frequency_pixmap.height())
+        scaled_width = int(frequency_pixmap.width() * scaling_factor * 2.5)  # Increase scaling factor slightly
+        scaled_height = int(frequency_pixmap.height() * scaling_factor * 2.5)  # Increase scaling factor slightly
+        frequency_pixmap = frequency_pixmap.scaled(scaled_width, scaled_height)
         self.label_frequency_polygon.setPixmap(frequency_pixmap)
+        self.label_frequency_polygon.setAlignment(Qt.AlignCenter)  # Center the pixmap within the label
 
         # Calculate and update cumulative curve
-        cumulative_curve_path = calculate_cumulative_curve(numbers)
-        cumulative_pixmap = QPixmap(cumulative_curve_path)
+        cumulative_data = calculate_cumulative_curve(numbers)
+        cumulative_pixmap = QPixmap(cumulative_data)
+        tab_size = self.tab_cumulative_curve.size()  # Get the size of the tab
+        scaling_factor = min(tab_size.width() / cumulative_pixmap.width(), tab_size.height() / cumulative_pixmap.height())
+        scaled_width = int(cumulative_pixmap.width() * scaling_factor * 2.5)  # Increase scaling factor slightly
+        scaled_height = int(cumulative_pixmap.height() * scaling_factor * 2.5)  # Increase scaling factor slightly
+        cumulative_pixmap = cumulative_pixmap.scaled(scaled_width, scaled_height)
         self.label_cumulative_curve.setPixmap(cumulative_pixmap)
+        self.label_cumulative_curve.setAlignment(Qt.AlignCenter)  # Center the pixmap within the label
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
