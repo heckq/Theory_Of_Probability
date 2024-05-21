@@ -8,11 +8,14 @@ def process_data(numbers):
     cumulative_frequencies = np.cumsum(counts)
     relative_cumulative_frequencies = np.cumsum(relative_frequencies)
     
-    mode = unique[np.argmax(counts)]
-    median = np.median(variation_series)
-    mean = np.mean(variation_series)
-    variance = np.var(variation_series)
-    std_deviation = np.std(variation_series)
+    mode = unique[np.argmax(counts)]  # мода
+    median = np.median(variation_series)  # медіана
+    mean = np.mean(variation_series)  # математичне сподівання
+    variance = np.var(variation_series)  # дисперсія 
+    std_deviation = np.std(variation_series)  # середнє квадратичне відхилення
+    central_moment_second_order = np.mean((variation_series - mean) ** 2) # Центральний момент другого порядку
+    skewness = np.mean((variation_series - mean) ** 3) / (std_deviation ** 3) # Асиметрія
+    kurtosis = np.mean((variation_series - mean) ** 4) / (std_deviation ** 4) - 3 # Ексцес
 
     results = {
         'Variation Series': variation_series,
@@ -24,7 +27,10 @@ def process_data(numbers):
         'Median': median,
         'Mean': mean,
         'Variance': variance,
-        'Standard Deviation': std_deviation
+        'Standard Deviation': std_deviation,
+        'Central Moment (2nd Order)': central_moment_second_order,
+        'Skewness': skewness,
+        'Kurtosis': kurtosis
     }
     
     return results

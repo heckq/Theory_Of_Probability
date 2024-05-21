@@ -3,7 +3,12 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QLineEdit, QPushB
 from PyQt5.QtGui import QColor, QPalette, QPixmap  
 from PyQt5.QtCore import Qt 
 from data_processing import process_data  
-from plotting import calculate_frequency_polygon, calculate_cumulative_curve
+from plotting import calculate_frequency_polygon, calculate_cumulative_curve, calculate_skewness_graph, calculate_kurtosis_graph
+import cgitb
+import codecs
+
+cgitb.enable()
+sys.stdout = codecs.getwriter("utf-8")(sys.stdout.detach())
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -17,9 +22,9 @@ class MainWindow(QMainWindow):
         self.central_widget.setLayout(self.layout)
 
         input_container_layout = QVBoxLayout()  
-        self.input_label = QLabel("Enter numbers (separated by space):")
+        self.input_label = QLabel("Введіть числа (розділені пробілами):")
         self.input_field = QLineEdit()
-        self.calculate_button = QPushButton("Calculate")
+        self.calculate_button = QPushButton("Розрахувати")
         self.calculate_button.clicked.connect(lambda: self.calculate_callback())
 
         input_container_layout.addWidget(self.input_label)
@@ -35,8 +40,8 @@ class MainWindow(QMainWindow):
         # Create two tabs
         self.tab_statistics = QWidget()
         self.tab_graphs = QWidget()
-        self.tab_widget.addTab(self.tab_statistics, "Statistics")
-        self.tab_widget.addTab(self.tab_graphs, "Graphs")
+        self.tab_widget.addTab(self.tab_statistics, "Статистика")
+        self.tab_widget.addTab(self.tab_graphs, "Графіки")
 
         # Layouts for each tab
         self.layout_statistics = QVBoxLayout()
@@ -48,10 +53,10 @@ class MainWindow(QMainWindow):
         tables_container = QWidget()  # Create a QWidget to contain the QGridLayout
         tables_layout = QGridLayout(tables_container)
         self.tables = []
-        for i, title in enumerate(["Variation Series", "Statistical Distribution", "Relative Frequencies", "Cumulative Frequencies", "Relative Cumulative Frequencies"]):
+        for i, title in enumerate(["Варіаційний ряд", "Статистичний розподіл", "Відносні частоти", "Накопичувальні частоти", "Відносні накопичувальні частоти"]):
             table = QTableWidget()
             table.setColumnCount(2)
-            table.setHorizontalHeaderLabels(["Statistic", "Value"])
+            table.setHorizontalHeaderLabels(["Статистика", "Значення"])
             self.tables.append(table)
             tables_layout.addWidget(QLabel(f"<b>{title}</b>"), 0, i)
             tables_layout.addWidget(table, 1, i)
@@ -63,12 +68,18 @@ class MainWindow(QMainWindow):
         self.mean_label = QLabel()
         self.variance_label = QLabel()
         self.std_deviation_label = QLabel()
+        self.central_moment_label = QLabel()
+        self.skewness_label = QLabel()
+        self.kurtosis_label = QLabel()
 
         self.layout_statistics.addWidget(self.mode_label)
         self.layout_statistics.addWidget(self.median_label)
         self.layout_statistics.addWidget(self.mean_label)
         self.layout_statistics.addWidget(self.variance_label)
         self.layout_statistics.addWidget(self.std_deviation_label)
+        self.layout_statistics.addWidget(self.central_moment_label)
+        self.layout_statistics.addWidget(self.skewness_label)
+        self.layout_statistics.addWidget(self.kurtosis_label)
 
         # Create sub-tabs for graphs
         self.graphs_tab_widget = QTabWidget()
@@ -77,20 +88,32 @@ class MainWindow(QMainWindow):
         # Create tabs for each type of graph
         self.tab_frequency_polygon = QWidget()
         self.tab_cumulative_curve = QWidget()
-        self.graphs_tab_widget.addTab(self.tab_frequency_polygon, "Frequency Polygon")
-        self.graphs_tab_widget.addTab(self.tab_cumulative_curve, "Cumulative Curve")
+        self.tab_skewness = QWidget()
+        self.tab_kurtosis = QWidget()
+        self.graphs_tab_widget.addTab(self.tab_frequency_polygon, "Частотний Полігон")
+        self.graphs_tab_widget.addTab(self.tab_cumulative_curve, "Кумулятивна Крива")
+        self.graphs_tab_widget.addTab(self.tab_skewness, "Асиметрія")
+        self.graphs_tab_widget.addTab(self.tab_kurtosis, "Ексцес")
 
         # Layouts for each type of graph
         self.layout_frequency_polygon = QVBoxLayout()
         self.layout_cumulative_curve = QVBoxLayout()
+        self.layout_skewness = QVBoxLayout()
+        self.layout_kurtosis = QVBoxLayout()
         self.tab_frequency_polygon.setLayout(self.layout_frequency_polygon)
         self.tab_cumulative_curve.setLayout(self.layout_cumulative_curve)
+        self.tab_skewness.setLayout(self.layout_skewness)
+        self.tab_kurtosis.setLayout(self.layout_kurtosis)
 
         # Placeholder labels for frequency polygon and cumulative curve images
-        self.label_frequency_polygon = QLabel("Frequency Polygon will be displayed here")
-        self.label_cumulative_curve = QLabel("Cumulative Curve will be displayed here")
+        self.label_frequency_polygon = QLabel("Частотний Полігон буде відображено тут")
+        self.label_cumulative_curve = QLabel("Кумулятивна Крива буде відображено тут")
+        self.label_skewness = QLabel("Графік асиметрії буде відображено тут")
+        self.label_kurtosis = QLabel("Графік ексцесу буде відображено тут")
         self.layout_frequency_polygon.addWidget(self.label_frequency_polygon)
         self.layout_cumulative_curve.addWidget(self.label_cumulative_curve)
+        self.layout_skewness.addWidget(self.label_skewness)
+        self.layout_kurtosis.addWidget(self.label_kurtosis)
 
     def calculate_callback(self):
         data = self.input_field.text()
@@ -121,32 +144,55 @@ class MainWindow(QMainWindow):
                     item.setTextAlignment(Qt.AlignCenter)  
                     table.setItem(0, 1, item)
 
-        self.mode_label.setText(f"Mode: {results['Mode']}")
-        self.median_label.setText(f"Median: {results['Median']}")
-        self.mean_label.setText(f"Mean: {results['Mean']}")
-        self.variance_label.setText(f"Variance: {results['Variance']}")
-        self.std_deviation_label.setText(f"Standard Deviation: {results['Standard Deviation']}")
+        self.mode_label.setText(f"Мода: {results['Mode']}")
+        self.median_label.setText(f"Медіана: {results['Median']}")
+        self.mean_label.setText(f"Середнє: {results['Mean']}")
+        self.variance_label.setText(f"Дисперсія: {results['Variance']}")
+        self.std_deviation_label.setText(f"Стандартне відхилення: {results['Standard Deviation']}")
+        self.central_moment_label.setText(f"Центральний момент 2-го порядку: {results['Central Moment (2nd Order)']}")
+        self.skewness_label.setText(f"Асиметрія: {results['Skewness']}")
+        self.kurtosis_label.setText(f"Ексцес: {results['Kurtosis']}")
 
         frequency_data = calculate_frequency_polygon(numbers)
         frequency_pixmap = QPixmap(frequency_data)
         tab_size = self.tab_frequency_polygon.size()  # Get the size of the tab
         scaling_factor = min(tab_size.width() / frequency_pixmap.width(), tab_size.height() / frequency_pixmap.height())
-        scaled_width = int(frequency_pixmap.width() * scaling_factor * 2.5)  # Increase scaling factor slightly
-        scaled_height = int(frequency_pixmap.height() * scaling_factor * 2.5)  # Increase scaling factor slightly
+        scaled_width = int(frequency_pixmap.width() * scaling_factor * 2)  # Increase scaling factor slightly
+        scaled_height = int(frequency_pixmap.height() * scaling_factor * 2)  # Increase scaling factor slightly
         frequency_pixmap = frequency_pixmap.scaled(scaled_width, scaled_height)
         self.label_frequency_polygon.setPixmap(frequency_pixmap)
         self.label_frequency_polygon.setAlignment(Qt.AlignCenter)  # Center the pixmap within the label
 
-        # Calculate and update cumulative curve
         cumulative_data = calculate_cumulative_curve(numbers)
         cumulative_pixmap = QPixmap(cumulative_data)
         tab_size = self.tab_cumulative_curve.size()  # Get the size of the tab
         scaling_factor = min(tab_size.width() / cumulative_pixmap.width(), tab_size.height() / cumulative_pixmap.height())
-        scaled_width = int(cumulative_pixmap.width() * scaling_factor * 2.5)  # Increase scaling factor slightly
-        scaled_height = int(cumulative_pixmap.height() * scaling_factor * 2.5)  # Increase scaling factor slightly
+        scaled_width = int(cumulative_pixmap.width() * scaling_factor * 2)  # Increase scaling factor slightly
+        scaled_height = int(cumulative_pixmap.height() * scaling_factor * 2)  # Increase scaling factor slightly
         cumulative_pixmap = cumulative_pixmap.scaled(scaled_width, scaled_height)
         self.label_cumulative_curve.setPixmap(cumulative_pixmap)
         self.label_cumulative_curve.setAlignment(Qt.AlignCenter)  # Center the pixmap within the label
+
+        # Графіки асиметрії та ексцесу
+        skewness_data = calculate_skewness_graph(numbers)
+        skewness_pixmap = QPixmap(skewness_data)
+        tab_size = self.tab_skewness.size()
+        scaling_factor = min(tab_size.width() / skewness_pixmap.width(), tab_size.height() / skewness_pixmap.height())
+        scaled_width = int(skewness_pixmap.width() * scaling_factor * 2)
+        scaled_height = int(skewness_pixmap.height() * scaling_factor * 2)
+        skewness_pixmap = skewness_pixmap.scaled(scaled_width, scaled_height)
+        self.label_skewness.setPixmap(skewness_pixmap)
+        self.label_skewness.setAlignment(Qt.AlignCenter)
+
+        kurtosis_data = calculate_kurtosis_graph(numbers)
+        kurtosis_pixmap = QPixmap(kurtosis_data)
+        tab_size = self.tab_kurtosis.size()
+        scaling_factor = min(tab_size.width() / kurtosis_pixmap.width(), tab_size.height() / kurtosis_pixmap.height())
+        scaled_width = int(kurtosis_pixmap.width() * scaling_factor * 2)
+        scaled_height = int(kurtosis_pixmap.height() * scaling_factor * 2)
+        kurtosis_pixmap = kurtosis_pixmap.scaled(scaled_width, scaled_height)
+        self.label_kurtosis.setPixmap(kurtosis_pixmap)
+        self.label_kurtosis.setAlignment(Qt.AlignCenter)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
@@ -169,5 +215,7 @@ if __name__ == "__main__":
     app.setPalette(palette)
 
     window = MainWindow()
-    window.showMaximized()  
+    window.showMaximized()
+    window.show()
+
     sys.exit(app.exec_())
