@@ -1,8 +1,9 @@
 import sys
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QLineEdit, QPushButton, QGridLayout, QVBoxLayout, QWidget, QTableWidget, QTableWidgetItem, QTabWidget, QFileDialog
-from PyQt5.QtGui import QColor, QPalette, QPixmap  
-from PyQt5.QtCore import Qt 
-from data_processing import process_data  
+from PyQt5.QtGui import QColor, QPalette
+from PyQt5.QtCore import Qt, QUrl
+from PyQt5.QtWebEngineWidgets import QWebEngineView  # Переконайтеся, що цей рядок правильно імпортується
+from data_processing import process_data  # Ваш модуль для обробки даних
 from plotting import calculate_frequency_polygon, calculate_cumulative_curve, calculate_skewness_graph, calculate_kurtosis_graph
 import cgitb
 import codecs
@@ -18,14 +19,14 @@ class MainWindow(QMainWindow):
 
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
-        self.layout = QVBoxLayout() 
+        self.layout = QVBoxLayout()
         self.central_widget.setLayout(self.layout)
 
-        input_container_layout = QVBoxLayout()  
+        input_container_layout = QVBoxLayout()
         self.input_label = QLabel("Введіть числа (розділені пробілами):")
         self.input_field = QLineEdit()
         self.calculate_button = QPushButton("Розрахувати")
-        self.calculate_button.clicked.connect(lambda: self.calculate_callback())
+        self.calculate_button.clicked.connect(self.calculate_callback)
         
         self.load_button = QPushButton("Завантажити з файлу")
         self.load_button.clicked.connect(self.load_file)
@@ -96,14 +97,15 @@ class MainWindow(QMainWindow):
         self.tab_skewness.setLayout(self.layout_skewness)
         self.tab_kurtosis.setLayout(self.layout_kurtosis)
 
-        self.label_frequency_polygon = QLabel("Частотний Полігон буде показано тут")
-        self.label_cumulative_curve = QLabel("Кумулятивна Крива буде показана тут")
-        self.label_skewness = QLabel("Графік Асиметрії буде показаний тут")
-        self.label_kurtosis = QLabel("Графік Ексцесу буде показаний тут")
-        self.layout_frequency_polygon.addWidget(self.label_frequency_polygon)
-        self.layout_cumulative_curve.addWidget(self.label_cumulative_curve)
-        self.layout_skewness.addWidget(self.label_skewness)
-        self.layout_kurtosis.addWidget(self.label_kurtosis)
+        self.web_frequency_polygon = QWebEngineView()
+        self.web_cumulative_curve = QWebEngineView()
+        self.web_skewness = QWebEngineView()
+        self.web_kurtosis = QWebEngineView()
+
+        self.layout_frequency_polygon.addWidget(self.web_frequency_polygon)
+        self.layout_cumulative_curve.addWidget(self.web_cumulative_curve)
+        self.layout_skewness.addWidget(self.web_skewness)
+        self.layout_kurtosis.addWidget(self.web_kurtosis)
 
     def load_file(self):
         options = QFileDialog.Options()
@@ -124,7 +126,7 @@ class MainWindow(QMainWindow):
                 table.setRowCount(len(values))
                 for row, (statistic, value) in enumerate(values.items()):
                     table.setItem(row, 0, QTableWidgetItem(str(statistic)))
-                    item = QTableWidgetItem("{:.3f}".format(value)) 
+                    item = QTableWidgetItem("{:.3f}".format(value))
                     item.setTextAlignment(Qt.AlignCenter)
                     table.setItem(row, 1, item)
             else:
@@ -132,13 +134,13 @@ class MainWindow(QMainWindow):
                     table.setRowCount(len(values))
                     for row, value in enumerate(values):
                         table.setItem(row, 0, QTableWidgetItem(str(row + 1)))
-                        item = QTableWidgetItem("{:.3f}".format(value)) 
-                        item.setTextAlignment(Qt.AlignCenter) 
+                        item = QTableWidgetItem("{:.3f}".format(value))
+                        item.setTextAlignment(Qt.AlignCenter)
                         table.setItem(row, 1, item)
                 else:
                     table.setRowCount(1)
                     table.setItem(0, 0, QTableWidgetItem(str(title)))
-                    item = QTableWidgetItem("{:.3f}".format(values)) 
+                    item = QTableWidgetItem("{:.3f}".format(values))
                     item.setTextAlignment(Qt.AlignCenter)
                     table.setItem(0, 1, item)
 
@@ -148,15 +150,15 @@ class MainWindow(QMainWindow):
         self.variance_label.setText(f"Дисперсія: {results['Variance']}")
         self.std_deviation_label.setText(f"Середнє квадратичне відхилення: {results['Standard Deviation']}")
 
-        frequency_polygon_path = calculate_frequency_polygon(numbers)
-        cumulative_curve_path = calculate_cumulative_curve(numbers)
-        skewness_graph_path = calculate_skewness_graph(numbers)
-        kurtosis_graph_path = calculate_kurtosis_graph(numbers)
+        frequency_polygon_path = QUrl.fromLocalFile(calculate_frequency_polygon(numbers))
+        cumulative_curve_path = QUrl.fromLocalFile(calculate_cumulative_curve(numbers))
+        skewness_graph_path = QUrl.fromLocalFile(calculate_skewness_graph(numbers))
+        kurtosis_graph_path = QUrl.fromLocalFile(calculate_kurtosis_graph(numbers))
 
-        self.label_frequency_polygon.setPixmap(QPixmap(frequency_polygon_path))
-        self.label_cumulative_curve.setPixmap(QPixmap(cumulative_curve_path))
-        self.label_skewness.setPixmap(QPixmap(skewness_graph_path))
-        self.label_kurtosis.setPixmap(QPixmap(kurtosis_graph_path))
+        self.web_frequency_polygon.setUrl(frequency_polygon_path)
+        self.web_cumulative_curve.setUrl(cumulative_curve_path)
+        self.web_skewness.setUrl(skewness_graph_path)
+        self.web_kurtosis.setUrl(kurtosis_graph_path)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
